@@ -1,6 +1,0 @@
-.git
-.settings
-target/
-*.war
-*.ini
-*.cnf
