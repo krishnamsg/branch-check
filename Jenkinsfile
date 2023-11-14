@@ -1,53 +1,33 @@
 pipeline {
     agent any
-
+    
+    //tools {
+        //maven 'local_maven'
     parameters {
-        string(name: 'GIT_URL', description: 'Git repository URL', defaultValue: 'https://github.com/your/repo.git')
-        string(name: 'TOMCAT_URL', description: 'Tomcat server URL (e.g., http://tomcat-server:8080)', defaultValue: 'http://localhost:8080')
-        string(name: 'TOMCAT_USERNAME', description: 'Tomcat manager username', defaultValue: 'admin')
-        password(name: 'TOMCAT_PASSWORD', description: 'Tomcat manager password', defaultValue: 'admin')
+         string(name: 'staging_server', defaultValue: '192.168.56.101', description: 'Remote Staging Server')
     }
 
-    stages {
-        stage('Checkout') {
+stages{
+        stage('Build'){
             steps {
-                script {
-                    // Retrieve Git URL from parameters
-                    def gitUrl = params.GIT_URL
-
-                    // Checkout the source code from the specified Git repository
-                    git url: gitUrl
-                }
-            }
-        }
-
-        stage('Build') {
-            steps {
-                // Build your Maven project
                 sh 'mvn clean package'
             }
-        }
-
-        stage('Deploy to Tomcat') {
-            steps {
-                script {
-                    def tomcatUrl = params.TOMCAT_URL
-                    def tomcatUsername = params.TOMCAT_USERNAME
-                    def tomcatPassword = params.TOMCAT_PASSWORD
-
-                    // Deploy the WAR file to Tomcat using the manager API
-                    sh "curl --upload-file target/*.war --user ${tomcatUsername}:${tomcatPassword} ${tomcatUrl}/myapp"
+            post {
+                success {
+                    echo 'Archiving the artifacts'
+                    archiveArtifacts artifacts: '**/target/*.war'
                 }
             }
         }
-    }
 
-    post {
-        success {
-            echo 'Deployment successful!'
-        }
-        failure {
-            echo 'Deployment failed!'
+        stage ('Deployments'){
+            parallel{
+                stage ("Deploy to Staging"){
+                    steps {
+                       sh "scp -p "sagar123" -v -o StrictHostKeyChecking=no **/*.war root@${params.staging_server}:/opt/tomcat/webapps/"
+                    }
+                }
+            }
         }
     }
 }
